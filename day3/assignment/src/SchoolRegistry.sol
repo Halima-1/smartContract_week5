@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.28;
 
 interface IERC20{
     function transfer(address _to, uint256 _value) external returns (bool success);
@@ -27,8 +27,8 @@ contract SchoolRegistry {
     }
 
     mapping (address => uint) name;
-    //  staffSalary;
-     uint  constant staffSalary  = 5e18;
+    //  STAFF_SALARY;
+     uint  constant STAFF_SALARY  = 5000000000000000000;
 
     mapping(address => uint) _balances;
     mapping (address => uint) _staffBalance;
@@ -53,12 +53,12 @@ contract SchoolRegistry {
 
     // to add new student
     // address _tokenAddress;
-    uint256 student_id ;
+    uint256 studentId ;
     address user =msg.sender;
     //    user = msg.sender;
     function addStudent(string memory _studentname, string memory _gender, uint _level) external{
        
-        student_id = student_id + 1;
+        studentId = studentId + 1;
 
         require(_level == 100 || _level == 200 || _level == 300|| _level == 400 , "iiii");
         // require(_studentname && _gender && _level, "Kindly input ful details");
@@ -71,17 +71,17 @@ contract SchoolRegistry {
         require(success, "Payment failed");
 
         StudentDetails memory student =
-        (StudentDetails ({id: student_id,student_fullname:_studentname, gender:_gender, level:_level, fees:0, paymentStatus:false})); 
+        (StudentDetails ({id: studentId,student_fullname:_studentname, gender:_gender, level:_level, fees:0, paymentStatus:false})); 
         studentDetails.push(student);
         student.paymentStatus =true;
         emit studentPaymentReceived(_studentname, _level);
          }
 
 // to add new staff
-uint staff_id;
+uint staffId;
         function addStaff(address _staffAddress, string memory _staffname, string memory _gender) external{
-        staff_id = staff_id + 1;
-        StaffDetails memory staff =(StaffDetails({id: staff_id, staffAddress: _staffAddress, staff_fullname : _staffname, gender:_gender,paymentStatus:false}));
+        staffId = staffId + 1;
+        StaffDetails memory staff =(StaffDetails({id: staffId, staffAddress: _staffAddress, staff_fullname : _staffname, gender:_gender,paymentStatus:false}));
         staffDetails.push(staff);
 
         emit addedNewStaff(_staffname);
@@ -103,15 +103,17 @@ function getStaff()external view returns(StaffDetails [] memory){
 }
 
 // to pay staff
-    uint [] allStaffAccount ;
+    // uint[] allStaffAccount ;
     function payStaff(uint256 _id,
-     string memory _staffname)external   {
+     string memory _staffname)external {
         for(uint256 i; i >= staffDetails.length; i++){
         if(staffDetails[i].id == _id) {
     require(staffDetails[i].paymentStatus == false, "Staff has been paid");
         require(staffDetails[i].staffAddress != address(0), "Can't make payment to address zero");
-        require(paymentToken.balanceOf(address(this)) >= staffSalary ,"Insufficient fund");
-        allStaffAccount =staffDetails[i].staffAddress;
+        require(paymentToken.balanceOf(address(this)) >= STAFF_SALARY ,"Insufficient fund");
+       
+        address allStaffAccount =staffDetails[i].staffAddress;
+        paymentToken.transfer(allStaffAccount, STAFF_SALARY);
         }
     
         emit staffPaid(_staffname);
