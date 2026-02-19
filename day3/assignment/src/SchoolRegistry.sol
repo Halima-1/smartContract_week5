@@ -16,6 +16,7 @@ contract SchoolRegistry {
         uint level; 
         uint fees;
         bool paymentStatus ;
+        uint timeStamp;
     }
 //  staff struct
     struct StaffDetails {
@@ -35,11 +36,11 @@ contract SchoolRegistry {
     mapping(uint => uint) studentFees;
 
     constructor (address _tokenAddress){
-        studentFees[100] = 2e18;
-        studentFees[200] =4e18;
-        studentFees[300] =5e18;
-        studentFees[400] =5e18;
-        studentFees[500] =8e18;
+        studentFees[100] = 2000;
+        studentFees[200] =4000;
+        studentFees[300] =5000;
+        studentFees[400] =5000;
+        studentFees[500] =8000;
 
              paymentToken = IERC20(_tokenAddress);
              user =msg.sender;
@@ -67,13 +68,19 @@ contract SchoolRegistry {
         uint256 fee = studentFees[_level];
 
         require(fee > 0, "Fee not set for this level");
-        bool success =paymentToken.transferFrom(user, address(this), fee);
+        bool success =paymentToken.transferFrom(msg.sender, address(this), fee);
         require(success, "Payment failed");
 
         StudentDetails memory student =
-        (StudentDetails ({id: studentId,student_fullname:_studentname, gender:_gender, level:_level, fees:0, paymentStatus:false})); 
+        (StudentDetails ({
+            id: studentId,
+            student_fullname:_studentname,
+            gender:_gender,
+            level:_level, 
+            fees:fee, 
+            paymentStatus:true,
+            timeStamp: block.timestamp})); 
         studentDetails.push(student);
-        student.paymentStatus =true;
         emit studentPaymentReceived(_studentname, _level);
          }
 
@@ -97,6 +104,12 @@ function getStudent(uint256 _id)external view returns( StudentDetails  memory){
         }
     }
 }
+// to get all students{}
+function getAllStudent()external view returns(StudentDetails [] memory){
+     return studentDetails;
+}
+
+// to get all staff;
 
 function getStaff()external view returns(StaffDetails [] memory){
      return staffDetails;
