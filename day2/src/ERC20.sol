@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 contract ERC20 {
     string public name;
         string public symbol;
-    uint256 public immutable TOTAL_SUPPLY;
+    uint256 totalSupply;
     uint8 public immutable TOKEN_DECIMAL;
 
     mapping(address => uint256) _balances;
@@ -16,10 +16,15 @@ contract ERC20 {
     constructor (string memory _name, string memory _symbol, uint8  _decimal, uint256 _totalSupply) {
         name = _name;
         symbol =_symbol;
-        TOTAL_SUPPLY =_totalSupply;
+        totalSupply =_totalSupply;
         TOKEN_DECIMAL = _decimal;
     }
 
+  function mint(address _owner, uint256 _amount) external {
+        require(_owner != address(0), "Can't transfer to address zero");
+        totalSupply = totalSupply + _amount;
+        _balances[_owner] = _balances[_owner] + _amount;
+    }
     function balanceOf(address _owner ) public view returns (uint256){
         require(_owner != address(0), "Zero address detected");
         return _balances[_owner];
