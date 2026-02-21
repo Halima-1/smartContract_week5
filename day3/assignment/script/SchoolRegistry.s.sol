@@ -12,7 +12,7 @@ contract SchoolRegistryScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        schoolregistry = new SchoolRegistry(0x5D527ff9De9B001D7f341a4D6A4Df5Cfa64A901b);
+        schoolregistry = new SchoolRegistry(0xDe9DdA8EC6812bdBb4611cddC8D503f7B27e69eE);
 
         vm.stopBroadcast();
     }
