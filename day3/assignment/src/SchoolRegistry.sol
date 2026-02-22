@@ -18,6 +18,7 @@ contract SchoolRegistry {
         bool paymentStatus ;
         uint timeStamp;
         bool suspended;
+        address studentAddress;
     }
 //  staff struct
     struct StaffDetails {
@@ -39,11 +40,14 @@ contract SchoolRegistry {
     mapping(uint => uint) studentFees;
     mapping (uint => StudentDetails) students;
     mapping  (address => uint) public  addressToStudentId;
-        mapping  (address => uint) public  addressToStaffId;
+    mapping  (uint => uint) studentIdToIndex;
+    mapping  (address => uint) public  addressToStaffId;
+    mapping (uint => uint) staffIdToIndex;
 
 
     // addressToStudentId[msg.sender] =id;
 
+   address owner;
     constructor (address _tokenAddress){
         studentFees[100] =200000000000000000;
         studentFees[200] =400000000000000000;
@@ -51,9 +55,13 @@ contract SchoolRegistry {
         studentFees[400] =500000000000000000;
         studentFees[500] =800000000000000000;
 
-
              paymentToken = IERC20(_tokenAddress);
-             user =msg.sender;
+             owner =msg.sender;
+    }
+
+     modifier onlyOwner(){
+        require(msg.sender == owner, "Not the owner");
+        _;
     }
     event studentPaymentReceived(string _name, uint _level);
     event staffPaid(string _name);
@@ -63,17 +71,15 @@ contract SchoolRegistry {
     StaffDetails [] public staffDetails;
 
     // to add new student
-    // address _tokenAddress;
     uint256 studentId ;
     address user =msg.sender;
     //    user = msg.sender;
     function addStudent(string memory _studentname, string memory _gender, uint _level) external{
        
-        studentId = studentId + 1;
         require(addressToStudentId[msg.sender] ==0, "A student has already registered with this address");
         require(_level == 100 || _level == 200 || _level == 300|| _level == 400 , "Kindly input a valid level, no fee specified for this level");
         // require(_studentname && _gender && _level, "Kindly input ful details");
-
+        studentId = studentId + 1;
         uint256 fee = studentFees[_level];
 
         require(fee > 0, "Fee not set for this level");
@@ -89,92 +95,114 @@ contract SchoolRegistry {
             fees:fee, 
             paymentStatus:true,
             timeStamp: block.timestamp, 
-            suspended:false
+            suspended:false,
+            studentAddress: msg.sender
             })); 
         studentDetails.push(student);
+
+        addressToStudentId[msg.sender] = studentId;
         emit studentPaymentReceived(_studentname, _level);
          }
 
 // to add new staff
 uint staffId;
-        function addStaff(address _staffAddress, string memory _staffname, string memory _gender) external{
-        staffId = staffId + 1;
+        function addStaff (address _staffAddress, string memory _staffname, string memory _gender) external onlyOwner(){
         require(_staffAddress != address(0));
-        require(addressToStaffId[_staffAddress] ==0, "This address already exist");
+        require(addressToStaffId[_staffAddress] == 0, "This address already exist");
+        staffId = staffId + 1;
         StaffDetails memory staff =(StaffDetails({id: staffId, staffAddress: _staffAddress, staff_fullname : _staffname, 
         gender:_gender,paymentStatus:false,
                     suspended:false
 }));
         staffDetails.push(staff);
-
+addressToStaffId[msg.sender] = staffId;
         emit addedNewStaff(_staffname);
 
     }
-
     //     function receiveStudentPayment(address)external {
     // }
  function getStudentById(uint256 _id) public view returns (StudentDetails memory) {
         return studentDetails[_id];
     }
-// to get all students{}
+// to get all students
 function getAllStudent()external view returns(StudentDetails [] memory){
      return studentDetails;
 }
 
 // to get all staff;
 
-function getStaff()external view returns(StaffDetails [] memory){
+function getAllStaff()external view returns(StaffDetails [] memory){
      return staffDetails;
 }
 
 // to pay staff
     // uint[] allStaffAccount ;
     function payStaff(uint256 _id,
-     string memory _staffname)external {
-        for(uint256 i; i >= staffDetails.length; i++){
-        if(staffDetails[i].id == _id) {
-                require(staffDetails[i].suspended != false, "Staff has been suspended");
-    require(staffDetails[i].paymentStatus == false, "Staff has been paid");
-        require(staffDetails[i].staffAddress != address(0), "Can't make payment to address zero");
+     string memory _staffname)external onlyOwner(){
+         uint indexx;
+            studentIdToIndex[_id] = indexx;
+                require(staffDetails[indexx].suspended == false, "Staff has been suspended");
+    require(staffDetails[indexx].paymentStatus == false, "Staff has been paid");
+        require(staffDetails[indexx].staffAddress != address(0), "Can't make payment to address zero");
         require(paymentToken.balanceOf(address(this)) >= STAFF_SALARY ,"Insufficient fund");
        
-        address StaffAccount =staffDetails[i].staffAddress;
+        address StaffAccount =staffDetails[indexx].staffAddress;
         paymentToken.transfer(StaffAccount, STAFF_SALARY);
+        staffDetails[indexx].paymentStatus == true;
+
+                emit staffPaid(_staffname);
+
         }
     
-        emit staffPaid(_staffname);
-            }
-        }
-
-        function suspendStaff(uint _id) external  returns(bool){
-        for(uint i; i >= staffDetails.length; i++){
-                    if(staffDetails[i].id == _id) {
-                        staffDetails[i].suspended =true;
-                    }
-        }}
-
-        // to remove student
-      function suspendStudent(uint _id) external  returns(bool){
-        for(uint i; i >= studentDetails.length; i++){
-                    if(studentDetails[i].id == _id) {
-                        studentDetails[i].suspended =true;
-                    }
-        }
-
-        return true;
-        }
-
-        
-         function removeStudent(uint _id) external  returns(bool){
-        for(uint i; i >= studentDetails.length; i++){
-                    if(studentDetails[i].id == _id) {
-                        studentDetails[i] =studentDetails[studentDetails.length - 1];
-                        studentDetails.pop();
-                    }
-        }
+// to suspend staff
+        function suspendStaff(uint _id) external  onlyOwner() returns(bool){
+            uint indexx;
+            staffIdToIndex[_id] = indexx;
+             require(staffIdToIndex[_id] < staffDetails.length, "Staff not found");
+            require((staffDetails[indexx].suspended ==false), "Staff is currently on suspension");
+            staffDetails[indexx].suspended = true;
+        // for(uint i; i <= studentDetails.length; i++){
+        //             if(staffDetails[i].id == _id) {
+        //                 staffDetails[i].suspended =true;
+        //             }
+        // }
                 return true;
 
         }
-        // return true;
-    
+
+        // to remove student
+
+      function suspendStudent(uint _id) external onlyOwner()  returns(bool){
+                 uint indexx;
+            studentIdToIndex[_id] = indexx;
+            require(studentIdToIndex[_id] < studentDetails.length, "Student not found");
+            require((studentDetails[indexx].suspended ==false), "Student is currently on suspension");
+           
+            studentDetails[indexx].suspended =true;
+
+        return true;
+        }
+        // to remove student
+
+        function removeStudent(uint256 _id) external onlyOwner() returns (bool) {
+    require(studentDetails.length > 0, "No students");
+    require(studentIdToIndex[_id] < studentDetails.length, "Student not found");
+
+    uint256 indexToRemove = studentIdToIndex[_id];
+    uint256 lastIndex = studentDetails.length - 1;
+
+    // If not removing last student, swap
+    if (indexToRemove != lastIndex) {
+        StudentDetails memory lastStudent = studentDetails[lastIndex];
+        studentDetails[indexToRemove] = lastStudent;
+        studentIdToIndex[lastStudent.id] = indexToRemove;
+    }
+
+    // Remove last element
+    studentDetails.pop();
+
+    delete studentIdToIndex[_id];
+
+    return true;
+}
 }
