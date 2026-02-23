@@ -60,7 +60,7 @@ contract SchoolRegistry {
     }
 
      modifier onlyOwner(){
-        require(msg.sender == owner, "Not the owner");
+        require(msg.sender == owner, "This action has been restricted to only owner");
         _;
     }
     event studentPaymentReceived(string _name, uint _level);
@@ -98,30 +98,32 @@ contract SchoolRegistry {
             suspended:false,
             studentAddress: msg.sender
             })); 
+            studentIdToIndex[studentId] = studentDetails.length;
+            addressToStudentId[msg.sender] = studentId;
         studentDetails.push(student);
-
-        addressToStudentId[msg.sender] = studentId;
         emit studentPaymentReceived(_studentname, _level);
          }
 
 // to add new staff
 uint staffId;
         function addStaff (address _staffAddress, string memory _staffname, string memory _gender) external onlyOwner(){
-        require(_staffAddress != address(0));
+        require(_staffAddress != address(0), "Invalid address");
         require(addressToStaffId[_staffAddress] == 0, "This address already exist");
         staffId = staffId + 1;
         StaffDetails memory staff =(StaffDetails({id: staffId, staffAddress: _staffAddress, staff_fullname : _staffname, 
         gender:_gender,paymentStatus:false,
                     suspended:false
 }));
-        staffDetails.push(staff);
+staffIdToIndex[staffId] = staffDetails.length;
 addressToStaffId[msg.sender] = staffId;
+        staffDetails.push(staff);
         emit addedNewStaff(_staffname);
 
     }
     //     function receiveStudentPayment(address)external {
     // }
  function getStudentById(uint256 _id) public view returns (StudentDetails memory) {
+                 require(studentIdToIndex[_id] < staffDetails.length, "Student not found");
         return studentDetails[_id];
     }
 // to get all students
@@ -138,29 +140,38 @@ function getAllStaff()external view returns(StaffDetails [] memory){
 // to pay staff
     // uint[] allStaffAccount ;
     function payStaff(uint256 _id,
-     string memory _staffname)external onlyOwner(){
-         uint indexx;
-            studentIdToIndex[_id] = indexx;
-                require(staffDetails[indexx].suspended == false, "Staff has been suspended");
-    require(staffDetails[indexx].paymentStatus == false, "Staff has been paid");
-        require(staffDetails[indexx].staffAddress != address(0), "Can't make payment to address zero");
+     string memory _staffname)external onlyOwner() returns(bool){
+         uint index =staffIdToIndex[_id];
+                require(staffDetails[index].suspended == false, "Staff has been suspended");
+    require(staffDetails[index].paymentStatus == false, "Staff has been paid");
+        require(staffDetails[index].staffAddress != address(0), "Can't make payment to address zero");
         require(paymentToken.balanceOf(address(this)) >= STAFF_SALARY ,"Insufficient fund");
        
-        address StaffAccount =staffDetails[indexx].staffAddress;
-        paymentToken.transfer(StaffAccount, STAFF_SALARY);
-        staffDetails[indexx].paymentStatus == true;
+        address StaffAccount =staffDetails[index].staffAddress;
+              uint256 contractBalance = paymentToken.balanceOf(address(this));
+    require(
+        contractBalance >= STAFF_SALARY,
+        "Insufficient contract token balance"
+    );
+
+       bool success = paymentToken.transfer(StaffAccount, STAFF_SALARY);
+       require(success, "Transaction failed");
+        staffDetails[index].paymentStatus = true;
 
                 emit staffPaid(_staffname);
+
+                return true;
 
         }
     
 // to suspend staff
         function suspendStaff(uint _id) external  onlyOwner() returns(bool){
-            uint indexx;
-            staffIdToIndex[_id] = indexx;
+            // staffIdToIndex[_id] = staffDetails.length;
+            uint index = staffIdToIndex[_id];
+
              require(staffIdToIndex[_id] < staffDetails.length, "Staff not found");
-            require((staffDetails[indexx].suspended ==false), "Staff is currently on suspension");
-            staffDetails[indexx].suspended = true;
+            require((staffDetails[index].suspended ==false), "Staff is currently on suspension");
+            staffDetails[index].suspended = true;
         // for(uint i; i <= studentDetails.length; i++){
         //             if(staffDetails[i].id == _id) {
         //                 staffDetails[i].suspended =true;
@@ -170,15 +181,14 @@ function getAllStaff()external view returns(StaffDetails [] memory){
 
         }
 
-        // to remove student
+        // to suspend student
 
       function suspendStudent(uint _id) external onlyOwner()  returns(bool){
-                 uint indexx;
-            studentIdToIndex[_id] = indexx;
+           uint index = studentIdToIndex[_id] ;
             require(studentIdToIndex[_id] < studentDetails.length, "Student not found");
-            require((studentDetails[indexx].suspended ==false), "Student is currently on suspension");
+            require((studentDetails[index].suspended ==false), "Student is currently on suspension");
            
-            studentDetails[indexx].suspended =true;
+            studentDetails[index].suspended =true;
 
         return true;
         }
@@ -191,7 +201,6 @@ function getAllStaff()external view returns(StaffDetails [] memory){
     uint256 indexToRemove = studentIdToIndex[_id];
     uint256 lastIndex = studentDetails.length - 1;
 
-    // If not removing last student, swap
     if (indexToRemove != lastIndex) {
         StudentDetails memory lastStudent = studentDetails[lastIndex];
         studentDetails[indexToRemove] = lastStudent;
